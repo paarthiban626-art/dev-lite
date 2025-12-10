@@ -225,7 +225,7 @@ SELECT * FROM Users;`
             }
         }
 
-        // Helper to open new page
+        // Helper to open new page with responsive styles
         function openInNewTab(content, title = "Output") {
             const win = window.open();
             if (win) {
@@ -235,9 +235,34 @@ SELECT * FROM Users;`
                         <title>${title}</title>
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
                         <style>
-                            body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
-                            table { border-collapse: collapse; width: 100%; max-width: 800px; margin-top: 20px; }
-                            th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+                            /* Mobile-friendly output styles */
+                            body { 
+                                background: #111; 
+                                color: #eee; 
+                                font-family: monospace; 
+                                padding: 1rem; /* Use responsive padding */
+                                margin: 0;
+                                min-height: 100vh;
+                                box-sizing: border-box;
+                                font-size: 16px; /* Base font size */
+                            }
+                            .table-responsive {
+                                overflow-x: auto; /* Allows table to scroll horizontally on small screens */
+                                max-width: 100%;
+                            }
+                            table { 
+                                border-collapse: collapse; 
+                                width: 100%; /* Takes full available width */
+                                max-width: 100%; 
+                                margin-top: 20px; 
+                                font-size: 0.9em; 
+                            }
+                            th, td { 
+                                border: 1px solid #444; 
+                                padding: 8px; 
+                                text-align: left; 
+                                min-width: 80px; /* Minimum width for table cells */
+                            }
                             th { background-color: #222; color: #4ade80; }
                         </style>
                     </head>
@@ -246,7 +271,8 @@ SELECT * FROM Users;`
                 `);
                 win.document.close();
             } else {
-                alert("Popup blocked! Please allow popups for this site.");
+                // Using console.error instead of alert()
+                console.error("Popup blocked! Please allow popups for this site to view the output.");
             }
         }
 
@@ -257,7 +283,7 @@ SELECT * FROM Users;`
                 win.document.write(code);
                 win.document.close();
             } else {
-                alert("Popup blocked! Please allow popups for this site.");
+                console.error("Popup blocked! Please allow popups for this site to view the output.");
             }
         }
 
@@ -324,7 +350,6 @@ SELECT * FROM Users;`
             const upperCode = code.toUpperCase();
             
             // 1. Check Errors (Basic simulation check)
-            // SQL usually allows running anything, but let's say empty code is error
             if (!code.trim()) {
                  outputDiv.innerHTML = `<div class="text-red-500">Error: No SQL query provided.</div>`;
                  return;
@@ -336,17 +361,20 @@ SELECT * FROM Users;`
                 outputHtml = `<div style="color: #60a5fa;">Query Executed Successfully.</div>
                               <div style="color: #9ca3af;">No result set returned (e.g. INSERT/UPDATE/CREATE).</div>`;
             } else {
+                // Table output wrapped in a responsive container
                 outputHtml = `
                 <div style="color: #60a5fa; margin-bottom: 10px;">Query OK, 2 rows affected (0.02 sec)</div>
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Name</th><th>Role</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>1</td><td>Alice</td><td>Admin</td></tr>
-                        <tr><td>2</td><td>Bob</td><td>Developer</td></tr>
-                    </tbody>
-                </table>`;
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>Name</th><th>Role</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1</td><td>Alice</td><td>Admin</td></tr>
+                            <tr><td>2</td><td>Bob</td><td>Developer</td></tr>
+                        </tbody>
+                    </table>
+                </div>`;
             }
 
             outputDiv.innerHTML = '<div class="text-green-500">Query Executed. Output opened in new tab.</div>';
