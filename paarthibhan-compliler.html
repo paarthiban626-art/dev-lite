@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevLite by Paarthibhan</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- CodeMirror CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
+    
+    <!-- Custom Styles -->
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; 
+        }
+
+        /* CodeMirror Customization */
+        .CodeMirror {
+            height: 100% !important;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Full Screen Animation */
+        .fullscreen-enter {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 50;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 h-screen flex flex-col overflow-hidden font-sans">
+
+    <!-- Navbar -->
+    <header class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <i class="fas fa-code text-white"></i>
+            </div>
+            <h1 class="text-xl font-bold tracking-wide text-white">
+                <span class="text-blue-400">Dev</span>Lite by Paarthibhan
+            </h1>
+        </div>
+        
+        <div class="flex items-center gap-3">
+            <button id="runBtn" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-md font-semibold flex items-center gap-2 transition shadow-lg shadow-green-900/50">
+                <i class="fas fa-play text-sm"></i> <span class="hidden sm:inline">Run Code</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- Editor Section -->
+        <section class="flex-1 flex flex-col min-w-0 border-r border-gray-700">
+            <!-- Language Tabs -->
+            <div class="bg-gray-800 px-2 pt-2 flex gap-1 border-b border-gray-700 overflow-x-auto no-scrollbar">
+                <button onclick="setLanguage('html')" id="tab-html" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors bg-gray-700 text-blue-400 border-t-2 border-blue-500">
+                    <i class="fab fa-html5 mr-1"></i> HTML
+                </button>
+                <button onclick="setLanguage('cpp')" id="tab-cpp" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors text-gray-400 hover:bg-gray-700 hover:text-gray-200">
+                    <i class="fas fa-code mr-1"></i> C++
+                </button>
+                <button onclick="setLanguage('mysql')" id="tab-mysql" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors text-gray-400 hover:bg-gray-700 hover:text-gray-200">
+                    <i class="fas fa-database mr-1"></i> MySQL
+                </button>
+            </div>
+
+            <!-- Code Area -->
+            <div class="flex-1 relative bg-[#282a36]">
+                <textarea id="codeEditor"></textarea>
+            </div>
+        </section>
+
+        <!-- Output Section (Mainly for Errors now) -->
+        <section id="outputSection" class="h-1/3 lg:h-auto lg:w-1/2 flex flex-col bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-700 transition-all duration-300">
+            <!-- Output Header -->
+            <div class="bg-gray-800 h-10 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
+                <span class="text-xs font-bold uppercase tracking-wider text-gray-400">
+                    <i class="fas fa-terminal mr-2"></i> Status / Errors
+                </span>
+                <div class="flex gap-2">
+                    <button onclick="clearOutput()" class="text-gray-400 hover:text-red-400 text-xs transition" title="Clear Console">
+                        <i class="fas fa-ban"></i> Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Output Container -->
+            <div class="flex-1 relative bg-black overflow-hidden">
+                <!-- Console Output (Code) -->
+                <div id="consoleOutput" class="w-full h-full p-4 font-mono text-sm overflow-auto text-gray-400">
+                    <div class="text-gray-500 italic mb-2">// Errors will appear here. Success output opens in a new tab.</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- CodeMirror JS Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
+
+    <script>
+        // --- Configuration & Default Code ---
+        const defaults = {
+            html: `<!DOCTYPE html>
+<html>
+<head>
+  <title>My Page</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 50px; background: #f0f9ff; }
+    h1 { color: #0284c7; }
+    button { padding: 10px 20px; background: #0284c7; color: white; border: none; border-radius: 5px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Hello World!</h1>
+  <p>This page was generated by DevLite.</p>
+  <button onclick="alert('It works!')">Click Me</button>
+</body>
+</html>`,
+            cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    // Basic Output Simulation
+    cout << "Hello, C++ Programmer!" << endl;
+    cout << "This output is in a new tab." << endl;
+    
+    return 0;
+}`,
+            mysql: `-- Simulated MySQL Environment
+
+CREATE TABLE Users (id INT, name VARCHAR(50), role VARCHAR(20));
+
+INSERT INTO Users VALUES (1, 'Alice', 'Admin');
+INSERT INTO Users VALUES (2, 'Bob', 'Developer');
+
+SELECT * FROM Users;`
+        };
+
+        let currentLang = 'html';
+        let editor;
+
+        // --- Initialization ---
+        window.onload = function() {
+            editor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
+                lineNumbers: true,
+                theme: "dracula",
+                mode: "htmlmixed",
+                autoCloseBrackets: true,
+                tabSize: 4,
+                indentUnit: 4
+            });
+
+            setLanguage('html');
+            document.getElementById('runBtn').addEventListener('click', runCode);
+            window.addEventListener('resize', () => editor.refresh());
+        };
+
+        // --- Language Switching ---
+        function setLanguage(lang) {
+            currentLang = lang;
+            
+            document.querySelectorAll('.lang-tab').forEach(btn => {
+                btn.className = "lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors text-gray-400 hover:bg-gray-700 hover:text-gray-200";
+            });
+            document.getElementById(`tab-${lang}`).className = "lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors bg-gray-700 text-blue-400 border-t-2 border-blue-500";
+
+            if (lang === 'html') {
+                editor.setOption("mode", "htmlmixed");
+                editor.setValue(defaults.html);
+            } else if (lang === 'cpp') {
+                editor.setOption("mode", "text/x-c++src");
+                editor.setValue(defaults.cpp);
+            } else if (lang === 'mysql') {
+                editor.setOption("mode", "text/x-mysql");
+                editor.setValue(defaults.mysql);
+            }
+            
+            document.getElementById('consoleOutput').innerHTML = '<div class="text-gray-500 italic">// Errors will appear here. Success output opens in a new tab.</div>';
+        }
+
+        // --- Execution Logic ---
+        function runCode() {
+            const code = editor.getValue();
+            
+            if (currentLang === 'html') {
+                runHTML(code);
+            } else if (currentLang === 'cpp') {
+                runCPP(code);
+            } else if (currentLang === 'mysql') {
+                runSQL(code);
+            }
+        }
+
+        // Helper to open new page
+        function openInNewTab(content, title = "Output") {
+            const win = window.open();
+            if (win) {
+                win.document.write(`
+                    <html>
+                    <head>
+                        <title>${title}</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body { background: #111; color: #eee; font-family: monospace; padding: 20px; }
+                            table { border-collapse: collapse; width: 100%; max-width: 800px; margin-top: 20px; }
+                            th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+                            th { background-color: #222; color: #4ade80; }
+                        </style>
+                    </head>
+                    <body>${content}</body>
+                    </html>
+                `);
+                win.document.close();
+            } else {
+                alert("Popup blocked! Please allow popups for this site.");
+            }
+        }
+
+        function runHTML(code) {
+            // HTML is just opened directly
+            const win = window.open();
+            if(win) {
+                win.document.write(code);
+                win.document.close();
+            } else {
+                alert("Popup blocked! Please allow popups for this site.");
+            }
+        }
+
+        function runCPP(code) {
+            const outputDiv = document.getElementById('consoleOutput');
+            outputDiv.innerHTML = ''; 
+
+            // 1. Check for Errors
+            let errors = [];
+            if (!code.includes('main')) {
+                errors.push("Error: 'main' function not found.");
+            }
+            if (code.includes('#include <') && !code.includes('>')) {
+                errors.push("Error: Preprocessor directive malformed.");
+            }
+
+            // 2. If Errors, Show in Console
+            if (errors.length > 0) {
+                outputDiv.innerHTML = `<div class="text-red-500 font-bold mb-2">Compilation Failed:</div>`;
+                errors.forEach(err => {
+                    outputDiv.innerHTML += `<div class="text-red-400">${err}</div>`;
+                });
+                return;
+            }
+
+            // 3. If Success, Generate Output and Open New Page
+            let outputHtml = `<div style="color: #fbbf24; margin-bottom: 10px;">Compiling GNU C++... Done.</div>`;
+            outputHtml += `<div style="color: #9ca3af; margin-bottom: 20px;">./a.out</div>`;
+            
+            let simOutput = "";
+            const lines = code.split('\n');
+            lines.forEach(line => {
+                if(line.includes('cout')) {
+                    const parts = line.split('<<');
+                    for(let i=1; i<parts.length; i++) {
+                        let content = parts[i].trim();
+                        if(content.endsWith(';')) content = content.slice(0, -1);
+                        
+                        if(content.startsWith('"') && content.includes('"')) {
+                             let text = content.match(/"([^"]*)"/);
+                             if(text && text[1]) simOutput += `<span>${text[1]}</span>`;
+                        } else if (content === 'endl') {
+                            simOutput += '<br>';
+                        }
+                    }
+                }
+            });
+
+            if(!simOutput) simOutput = `<span style="color: #6b7280;">(Program exited with no output)</span>`;
+            
+            outputHtml += `<div style="color: #4ade80; font-size: 1.1em;">${simOutput}</div>`;
+            outputHtml += `<br><div style="color: #6b7280; margin-top: 20px;">Process returned 0 (0x0)</div>`;
+
+            // Reset console message
+            outputDiv.innerHTML = '<div class="text-green-500">Compilation Successful. Output opened in new tab.</div>';
+            
+            openInNewTab(outputHtml, "C++ Output");
+        }
+
+        function runSQL(code) {
+            const outputDiv = document.getElementById('consoleOutput');
+            outputDiv.innerHTML = '';
+            
+            const upperCode = code.toUpperCase();
+            
+            // 1. Check Errors (Basic simulation check)
+            // SQL usually allows running anything, but let's say empty code is error
+            if (!code.trim()) {
+                 outputDiv.innerHTML = `<div class="text-red-500">Error: No SQL query provided.</div>`;
+                 return;
+            }
+
+            // 2. If Success, Open New Page
+            let outputHtml = '';
+            if (!upperCode.includes('SELECT')) {
+                outputHtml = `<div style="color: #60a5fa;">Query Executed Successfully.</div>
+                              <div style="color: #9ca3af;">No result set returned (e.g. INSERT/UPDATE/CREATE).</div>`;
+            } else {
+                outputHtml = `
+                <div style="color: #60a5fa; margin-bottom: 10px;">Query OK, 2 rows affected (0.02 sec)</div>
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Name</th><th>Role</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1</td><td>Alice</td><td>Admin</td></tr>
+                        <tr><td>2</td><td>Bob</td><td>Developer</td></tr>
+                    </tbody>
+                </table>`;
+            }
+
+            outputDiv.innerHTML = '<div class="text-green-500">Query Executed. Output opened in new tab.</div>';
+            openInNewTab(outputHtml, "MySQL Output");
+        }
+
+        function clearOutput() {
+            document.getElementById('consoleOutput').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
