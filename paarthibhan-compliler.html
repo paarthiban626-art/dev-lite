@@ -34,25 +34,17 @@
         }
 
         /* CodeMirror Customization */
+        /* Important: CodeMirror height must be 100% to fill its parent flex container */
         .CodeMirror {
             height: 100% !important;
             font-family: 'Fira Code', 'Consolas', monospace;
             font-size: 14px;
             line-height: 1.5;
         }
-
-        /* Full Screen Animation */
-        .fullscreen-enter {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            z-index: 50;
-        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 h-screen flex flex-col overflow-hidden font-sans">
+<!-- Removed h-screen and overflow-hidden to allow body scrolling -->
+<body class="bg-gray-900 text-gray-200 flex flex-col min-h-screen font-sans">
 
     <!-- Navbar -->
     <header class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0">
@@ -67,16 +59,16 @@
         
         <div class="flex items-center gap-3">
             <button id="runBtn" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-md font-semibold flex items-center gap-2 transition shadow-lg shadow-green-900/50">
-                <i class="fas fa-play text-sm"></i> <span class="hidden sm:inline">Run Code</span>
+                <i class="fas fa-play text-sm"></i> <span>Run Code</span>
             </button>
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+    <!-- Main Content - Removed flex-1 and overflow-hidden -->
+    <main class="flex flex-col lg:flex-row">
         
-        <!-- Editor Section -->
-        <section class="flex-1 flex flex-col min-w-0 border-r border-gray-700">
+        <!-- Editor Section - Added minimum height for usability on small screens -->
+        <section class="flex-1 flex flex-col min-w-0 border-r border-gray-700 min-h-[500px] lg:min-h-[80vh]">
             <!-- Language Tabs -->
             <div class="bg-gray-800 px-2 pt-2 flex gap-1 border-b border-gray-700 overflow-x-auto no-scrollbar">
                 <button onclick="setLanguage('html')" id="tab-html" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors bg-gray-700 text-blue-400 border-t-2 border-blue-500">
@@ -96,25 +88,32 @@
             </div>
         </section>
 
-        <!-- Output Section (Mainly for Errors now) -->
-        <section id="outputSection" class="h-1/3 lg:h-auto lg:w-1/2 flex flex-col bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-700 transition-all duration-300">
+        <!-- Output Section - Added minimum height and removed previous height constraints -->
+        <section id="outputSection" class="min-h-[400px] lg:min-h-[80vh] lg:w-1/2 flex flex-col bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-700 transition-all duration-300">
             <!-- Output Header -->
             <div class="bg-gray-800 h-10 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
-                <span class="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    <i class="fas fa-terminal mr-2"></i> Status / Errors
+                <span id="outputTitle" class="text-xs font-bold uppercase tracking-wider text-gray-400">
+                    <i class="fas fa-terminal mr-2"></i> Output
                 </span>
                 <div class="flex gap-2">
                     <button onclick="clearOutput()" class="text-gray-400 hover:text-red-400 text-xs transition" title="Clear Console">
                         <i class="fas fa-ban"></i> Clear
                     </button>
+                     <!-- New Tab Button -->
+                    <button onclick="openCurrentOutputInNewTab()" class="text-gray-400 hover:text-blue-400 text-xs transition" title="Open in New Tab">
+                        <i class="fas fa-external-link-alt"></i> New Tab
+                    </button>
                 </div>
             </div>
 
             <!-- Output Container -->
-            <div class="flex-1 relative bg-black overflow-hidden">
-                <!-- Console Output (Code) -->
-                <div id="consoleOutput" class="w-full h-full p-4 font-mono text-sm overflow-auto text-gray-400">
-                    <div class="text-gray-500 italic mb-2">// Errors will appear here. Success output opens in a new tab.</div>
+            <div class="flex-1 relative bg-black overflow-y-auto overflow-x-hidden">
+                <!-- HTML Preview (Iframe) - Default output for HTML -->
+                <iframe id="htmlPreview" class="w-full h-full bg-white hidden"></iframe>
+                
+                <!-- Console Output (Div) - Default output for C++/MySQL -->
+                <div id="consoleOutput" class="w-full h-full p-4 font-mono text-sm text-gray-400 hidden">
+                    <div class="text-gray-500 italic mb-2">// Output will appear here...</div>
                 </div>
             </div>
         </section>
@@ -147,7 +146,7 @@
 <body>
   <h1>Hello World!</h1>
   <p>This page was generated by DevLite.</p>
-  <button onclick="alert('It works!')">Click Me</button>
+  <button onclick="console.log('It works!')">Click Me</button>
 </body>
 </html>`,
             cpp: `#include <iostream>
@@ -156,7 +155,7 @@ using namespace std;
 int main() {
     // Basic Output Simulation
     cout << "Hello, C++ Programmer!" << endl;
-    cout << "This output is in a new tab." << endl;
+    cout << "Output shown directly below." << endl;
     
     return 0;
 }`,
@@ -172,6 +171,7 @@ SELECT * FROM Users;`
 
         let currentLang = 'html';
         let editor;
+        let lastSuccessOutput = { content: '<div style="color: #6b7280;">Run code first to generate output.</div>', title: 'Empty Output' };
 
         // --- Initialization ---
         window.onload = function() {
@@ -186,6 +186,7 @@ SELECT * FROM Users;`
 
             setLanguage('html');
             document.getElementById('runBtn').addEventListener('click', runCode);
+            // Refresh CodeMirror layout on resize to adapt to new dimensions
             window.addEventListener('resize', () => editor.refresh());
         };
 
@@ -198,18 +199,24 @@ SELECT * FROM Users;`
             });
             document.getElementById(`tab-${lang}`).className = "lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors bg-gray-700 text-blue-400 border-t-2 border-blue-500";
 
+            // Update Editor Mode
             if (lang === 'html') {
                 editor.setOption("mode", "htmlmixed");
-                editor.setValue(defaults.html);
+                document.getElementById('htmlPreview').classList.remove('hidden');
+                document.getElementById('consoleOutput').classList.add('hidden');
             } else if (lang === 'cpp') {
                 editor.setOption("mode", "text/x-c++src");
-                editor.setValue(defaults.cpp);
+                document.getElementById('htmlPreview').classList.add('hidden');
+                document.getElementById('consoleOutput').classList.remove('hidden');
             } else if (lang === 'mysql') {
                 editor.setOption("mode", "text/x-mysql");
-                editor.setValue(defaults.mysql);
+                document.getElementById('htmlPreview').classList.add('hidden');
+                document.getElementById('consoleOutput').classList.remove('hidden');
             }
             
-            document.getElementById('consoleOutput').innerHTML = '<div class="text-gray-500 italic">// Errors will appear here. Success output opens in a new tab.</div>';
+            editor.setValue(defaults[lang]);
+            document.getElementById('consoleOutput').innerHTML = '<div class="text-gray-500 italic mb-2">// Output will appear here...</div>';
+            document.getElementById('outputTitle').innerHTML = `<i class="fas fa-${lang === 'mysql' ? 'database' : 'terminal'} mr-2"></i> Output`;
         }
 
         // --- Execution Logic ---
@@ -240,19 +247,19 @@ SELECT * FROM Users;`
                                 background: #111; 
                                 color: #eee; 
                                 font-family: monospace; 
-                                padding: 1rem; /* Use responsive padding */
+                                padding: 1rem;
                                 margin: 0;
                                 min-height: 100vh;
                                 box-sizing: border-box;
-                                font-size: 16px; /* Base font size */
+                                font-size: 16px;
                             }
                             .table-responsive {
-                                overflow-x: auto; /* Allows table to scroll horizontally on small screens */
+                                overflow-x: auto;
                                 max-width: 100%;
                             }
                             table { 
                                 border-collapse: collapse; 
-                                width: 100%; /* Takes full available width */
+                                width: 100%;
                                 max-width: 100%; 
                                 margin-top: 20px; 
                                 font-size: 0.9em; 
@@ -261,7 +268,7 @@ SELECT * FROM Users;`
                                 border: 1px solid #444; 
                                 padding: 8px; 
                                 text-align: left; 
-                                min-width: 80px; /* Minimum width for table cells */
+                                min-width: 80px;
                             }
                             th { background-color: #222; color: #4ade80; }
                         </style>
@@ -271,20 +278,31 @@ SELECT * FROM Users;`
                 `);
                 win.document.close();
             } else {
-                // Using console.error instead of alert()
                 console.error("Popup blocked! Please allow popups for this site to view the output.");
             }
         }
 
-        function runHTML(code) {
-            // HTML is just opened directly
-            const win = window.open();
-            if(win) {
-                win.document.write(code);
-                win.document.close();
+        function openCurrentOutputInNewTab() {
+            if (currentLang === 'html') {
+                const code = editor.getValue();
+                const win = window.open();
+                if(win) {
+                    win.document.write(code);
+                    win.document.close();
+                } else {
+                    console.error("Popup blocked! Please allow popups for this site to view the output.");
+                }
             } else {
-                console.error("Popup blocked! Please allow popups for this site to view the output.");
+                // Use the last stored successful C++/MySQL output
+                openInNewTab(lastSuccessOutput.content, lastSuccessOutput.title);
             }
+        }
+
+        function runHTML(code) {
+            const frame = document.getElementById('htmlPreview');
+            // Store the full code for new tab opening
+            lastSuccessOutput = { content: code, title: 'HTML Output' }; 
+            frame.srcdoc = code;
         }
 
         function runCPP(code) {
@@ -309,7 +327,7 @@ SELECT * FROM Users;`
                 return;
             }
 
-            // 3. If Success, Generate Output and Open New Page
+            // 3. If Success, Generate Output and Show In-Page
             let outputHtml = `<div style="color: #fbbf24; margin-bottom: 10px;">Compiling GNU C++... Done.</div>`;
             outputHtml += `<div style="color: #9ca3af; margin-bottom: 20px;">./a.out</div>`;
             
@@ -332,15 +350,20 @@ SELECT * FROM Users;`
                 }
             });
 
-            if(!simOutput) simOutput = `<span style="color: #6b7280;">(Program exited with no output)</span>`;
+            if(!simOutput) simOutput = `<span style="color: #6b7280;">(Program executed with no output detected)</span>`;
             
-            outputHtml += `<div style="color: #4ade80; font-size: 1.1em;">${simOutput}</div>`;
+            const finalContent = `<div style="color: #4ade80; font-size: 1.1em;">${simOutput}</div>`;
+            outputHtml += finalContent;
             outputHtml += `<br><div style="color: #6b7280; margin-top: 20px;">Process returned 0 (0x0)</div>`;
 
-            // Reset console message
-            outputDiv.innerHTML = '<div class="text-green-500">Compilation Successful. Output opened in new tab.</div>';
+            // Display in-page
+            outputDiv.innerHTML = outputHtml;
             
-            openInNewTab(outputHtml, "C++ Output");
+            // Store HTML version for New Tab button
+            lastSuccessOutput = { 
+                content: `<h1 style="color: #4ade80;">C++ Program Output</h1>${outputHtml}`,
+                title: 'C++ Output'
+            };
         }
 
         function runSQL(code) {
@@ -355,17 +378,19 @@ SELECT * FROM Users;`
                  return;
             }
 
-            // 2. If Success, Open New Page
+            // 2. If Success, Generate Output and Show In-Page
             let outputHtml = '';
+            let content;
+
             if (!upperCode.includes('SELECT')) {
-                outputHtml = `<div style="color: #60a5fa;">Query Executed Successfully.</div>
-                              <div style="color: #9ca3af;">No result set returned (e.g. INSERT/UPDATE/CREATE).</div>`;
+                content = `<div style="color: #60a5fa;">Query Executed Successfully.</div>
+                           <div style="color: #9ca3af;">No result set returned (e.g. INSERT/UPDATE/CREATE).</div>`;
             } else {
                 // Table output wrapped in a responsive container
-                outputHtml = `
+                content = `
                 <div style="color: #60a5fa; margin-bottom: 10px;">Query OK, 2 rows affected (0.02 sec)</div>
                 <div class="table-responsive">
-                    <table>
+                    <table style="color: #eee;">
                         <thead>
                             <tr><th>ID</th><th>Name</th><th>Role</th></tr>
                         </thead>
@@ -376,13 +401,22 @@ SELECT * FROM Users;`
                     </table>
                 </div>`;
             }
-
-            outputDiv.innerHTML = '<div class="text-green-500">Query Executed. Output opened in new tab.</div>';
-            openInNewTab(outputHtml, "MySQL Output");
+            
+            outputDiv.innerHTML = content;
+            
+            // Store HTML version for New Tab button
+            lastSuccessOutput = { 
+                content: `<h1 style="color: #60a5fa;">MySQL Query Results</h1>${content}`, 
+                title: 'MySQL Output'
+            };
         }
 
         function clearOutput() {
-            document.getElementById('consoleOutput').innerHTML = '';
+             if (currentLang === 'html') {
+                document.getElementById('htmlPreview').srcdoc = '';
+            } else {
+                document.getElementById('consoleOutput').innerHTML = '<div class="text-gray-500 italic mb-2">// Output will appear here...</div>';
+            }
         }
     </script>
 </body>
