@@ -3,421 +3,405 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevLite by Paarthibhan</title>
-    
-    <!-- Tailwind CSS -->
+    <title>Online Compiler - Created by Paarthibhan</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <!-- CodeMirror CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/dracula.min.css">
-    
-    <!-- Custom Styles -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: #e2e8f0;
+            overflow: hidden; /* Prevent body scroll, handle in containers */
+        }
+
+        .code-font {
+            font-family: 'Fira Code', monospace;
+        }
+
         /* Custom Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #1f2937; 
+            background: #1e293b; 
         }
         ::-webkit-scrollbar-thumb {
-            background: #4b5563; 
+            background: #475569; 
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #6b7280; 
+            background: #64748b; 
         }
 
-        /* CodeMirror Customization */
-        /* Important: CodeMirror height must be 100% to fill its parent flex container */
-        .CodeMirror {
-            height: 100% !important;
-            font-family: 'Fira Code', 'Consolas', monospace;
-            font-size: 14px;
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .panel {
+                width: 100% !important;
+                height: 50% !important;
+            }
+            .resizer {
+                display: none;
+            }
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        textarea {
+            resize: none;
+            outline: none;
+            border: none;
             line-height: 1.5;
+            tab-size: 4;
+        }
+        
+        /* Syntax Highlighting Simulation (Basic) */
+        .token-keyword { color: #c678dd; }
+        .token-string { color: #98c379; }
+        .token-comment { color: #5c6370; font-style: italic; }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<!-- Removed h-screen and overflow-hidden to allow body scrolling -->
-<body class="bg-gray-900 text-gray-200 flex flex-col min-h-screen font-sans">
+<body class="text-slate-300">
 
-    <!-- Navbar -->
-    <header class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-4 sm:px-6 shrink-0">
-        <div class="flex items-center gap-3">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <i class="fas fa-code text-white"></i>
+    <div class="editor-container">
+        <!-- Navbar -->
+        <nav class="h-14 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-4 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+                    <i class="fas fa-code"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-white text-lg leading-tight">DevCompiler</h1>
+                    <p class="text-[10px] text-slate-400 font-mono">Created by Paarthibhan</p>
+                </div>
             </div>
-            <h1 class="text-xl font-bold tracking-wide text-white">
-                <span class="text-blue-400">Dev</span>Lite by Paarthibhan
-            </h1>
-        </div>
-        
-        <div class="flex items-center gap-3">
-            <button id="runBtn" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-md font-semibold flex items-center gap-2 transition shadow-lg shadow-green-900/50">
-                <i class="fas fa-play text-sm"></i> <span>Run Code</span>
+
+            <div class="flex items-center gap-2">
+                <button onclick="runCode()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-md font-semibold text-sm transition-all flex items-center gap-2 shadow-lg shadow-green-900/20 active:scale-95">
+                    <i class="fas fa-play text-xs"></i> <span class="hidden sm:inline">Run</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Language Tabs -->
+        <div class="bg-slate-800 border-b border-slate-700 px-2 flex items-center gap-1 shrink-0 overflow-x-auto">
+            <button onclick="switchLang('cpp')" id="tab-cpp" class="px-4 py-2 text-sm border-b-2 border-transparent hover:bg-slate-700/50 transition-colors text-slate-400">
+                <i class="fab fa-cuttlefish mr-1 text-blue-400"></i> C++
+            </button>
+            <button onclick="switchLang('html')" id="tab-html" class="px-4 py-2 text-sm border-b-2 border-blue-500 bg-slate-700/50 text-white font-medium transition-colors">
+                <i class="fab fa-html5 mr-1 text-orange-500"></i> HTML
+            </button>
+            <button onclick="switchLang('mysql')" id="tab-mysql" class="px-4 py-2 text-sm border-b-2 border-transparent hover:bg-slate-700/50 transition-colors text-slate-400">
+                <i class="fas fa-database mr-1 text-yellow-400"></i> MySQL
             </button>
         </div>
-    </header>
 
-    <!-- Main Content - Removed flex-1 and overflow-hidden -->
-    <main class="flex flex-col lg:flex-row">
-        
-        <!-- Editor Section - Added minimum height for usability on small screens -->
-        <section class="flex-1 flex flex-col min-w-0 border-r border-gray-700 min-h-[500px] lg:min-h-[80vh]">
-            <!-- Language Tabs -->
-            <div class="bg-gray-800 px-2 pt-2 flex gap-1 border-b border-gray-700 overflow-x-auto no-scrollbar">
-                <button onclick="setLanguage('html')" id="tab-html" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors bg-gray-700 text-blue-400 border-t-2 border-blue-500">
-                    <i class="fab fa-html5 mr-1"></i> HTML
-                </button>
-                <button onclick="setLanguage('cpp')" id="tab-cpp" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors text-gray-400 hover:bg-gray-700 hover:text-gray-200">
-                    <i class="fas fa-code mr-1"></i> C++
-                </button>
-                <button onclick="setLanguage('mysql')" id="tab-mysql" class="lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors text-gray-400 hover:bg-gray-700 hover:text-gray-200">
-                    <i class="fas fa-database mr-1"></i> MySQL
-                </button>
-            </div>
-
-            <!-- Code Area -->
-            <div class="flex-1 relative bg-[#282a36]">
-                <textarea id="codeEditor"></textarea>
-            </div>
-        </section>
-
-        <!-- Output Section - Added minimum height and removed previous height constraints -->
-        <section id="outputSection" class="min-h-[400px] lg:min-h-[80vh] lg:w-1/2 flex flex-col bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-700 transition-all duration-300">
-            <!-- Output Header -->
-            <div class="bg-gray-800 h-10 flex items-center justify-between px-4 border-b border-gray-700 shrink-0">
-                <span id="outputTitle" class="text-xs font-bold uppercase tracking-wider text-gray-400">
-                    <i class="fas fa-terminal mr-2"></i> Output
-                </span>
-                <div class="flex gap-2">
-                    <button onclick="clearOutput()" class="text-gray-400 hover:text-red-400 text-xs transition" title="Clear Console">
-                        <i class="fas fa-ban"></i> Clear
-                    </button>
-                     <!-- New Tab Button -->
-                    <button onclick="openCurrentOutputInNewTab()" class="text-gray-400 hover:text-blue-400 text-xs transition" title="Open in New Tab">
-                        <i class="fas fa-external-link-alt"></i> New Tab
-                    </button>
+        <!-- Main Workspace -->
+        <div class="main-content bg-slate-900">
+            
+            <!-- Code Editor Panel -->
+            <div class="panel border-r border-slate-700 bg-[#1e293b]">
+                <div class="flex items-center justify-between px-3 py-1 bg-[#1e293b] text-xs text-slate-400 border-b border-slate-700 select-none">
+                    <span>main<span id="file-ext">.html</span></span>
+                    <span id="status-text">Ready</span>
+                </div>
+                <div class="relative flex-1">
+                    <textarea id="code-editor" class="absolute inset-0 w-full h-full bg-[#1e293b] text-slate-200 code-font p-4 text-sm leading-6" spellcheck="false" placeholder="// Write your code here..."></textarea>
                 </div>
             </div>
 
-            <!-- Output Container -->
-            <div class="flex-1 relative bg-black overflow-y-auto overflow-x-hidden">
-                <!-- HTML Preview (Iframe) - Default output for HTML -->
-                <iframe id="htmlPreview" class="w-full h-full bg-white hidden"></iframe>
+            <!-- Output Panel -->
+            <div class="panel bg-black">
+                <div class="flex items-center justify-between px-3 py-1 bg-slate-800 text-xs text-slate-400 border-b border-slate-700 select-none">
+                    <span>Output / Terminal</span>
+                    <button onclick="clearOutput()" class="hover:text-white"><i class="fas fa-ban"></i> Clear</button>
+                </div>
                 
-                <!-- Console Output (Div) - Default output for C++/MySQL -->
-                <div id="consoleOutput" class="w-full h-full p-4 font-mono text-sm text-gray-400 hidden">
-                    <div class="text-gray-500 italic mb-2">// Output will appear here...</div>
+                <!-- Iframe for HTML -->
+                <div id="output-html-container" class="w-full h-full bg-white hidden">
+                    <iframe id="preview-frame" class="w-full h-full border-none"></iframe>
+                </div>
+
+                <!-- Console for C++/MySQL -->
+                <div id="output-console-container" class="w-full h-full p-4 code-font text-sm overflow-auto text-slate-300 hidden">
+                    <div id="console-output">
+                        <span class="text-slate-500">// Output will appear here...</span>
+                    </div>
                 </div>
             </div>
-        </section>
 
-    </main>
+        </div>
+    </div>
 
-    <!-- CodeMirror JS Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/clike/clike.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/sql/sql.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/edit/closebrackets.min.js"></script>
-
+    <!-- Scripts -->
     <script>
-        // --- Configuration & Default Code ---
-        const defaults = {
-            html: `<!DOCTYPE html>
-<html>
-<head>
-  <title>My Page</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 50px; background: #f0f9ff; }
-    h1 { color: #0284c7; }
-    button { padding: 10px 20px; background: #0284c7; color: white; border: none; border-radius: 5px; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <h1>Hello World!</h1>
-  <p>This page was generated by DevLite.</p>
-  <button onclick="console.log('It works!')">Click Me</button>
-</body>
-</html>`,
+        // State
+        let currentLang = 'html';
+        
+        // Default Code Templates
+        const templates = {
             cpp: `#include <iostream>
 using namespace std;
 
 int main() {
-    // Basic Output Simulation
-    cout << "Hello, C++ Programmer!" << endl;
-    cout << "Output shown directly below." << endl;
-    
+    // Write C++ code here
+    cout << "Hello, Paarthibhan!" << endl;
     return 0;
 }`,
-            mysql: `-- Simulated MySQL Environment
+            html: `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #f0f9ff; }
+        h1 { color: #0284c7; }
+        button { padding: 10px 20px; background: #0284c7; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0369a1; }
+    </style>
+</head>
+<body>
+    <h1>Welcome Web Dev!</h1>
+    <p>This is a live HTML preview.</p>
+    <button onclick="alert('It works!')">Click Me</button>
+</body>
+</html>`,
+            mysql: `-- Create a table
+CREATE TABLE Users (
+    ID int,
+    Name varchar(255),
+    Role varchar(255)
+);
 
-CREATE TABLE Users (id INT, name VARCHAR(50), role VARCHAR(20));
+-- Insert data
+INSERT INTO Users (ID, Name, Role)
+VALUES (1, 'Paarthibhan', 'Admin');
 
-INSERT INTO Users VALUES (1, 'Alice', 'Admin');
-INSERT INTO Users VALUES (2, 'Bob', 'Developer');
-
+-- Query data
 SELECT * FROM Users;`
         };
 
-        let currentLang = 'html';
-        let editor;
-        let lastSuccessOutput = { content: '<div style="color: #6b7280;">Run code first to generate output.</div>', title: 'Empty Output' };
+        // DOM Elements
+        const editor = document.getElementById('code-editor');
+        const fileExt = document.getElementById('file-ext');
+        const htmlContainer = document.getElementById('output-html-container');
+        const consoleContainer = document.getElementById('output-console-container');
+        const consoleOutput = document.getElementById('console-output');
+        const iframe = document.getElementById('preview-frame');
+        const statusText = document.getElementById('status-text');
 
-        // --- Initialization ---
-        window.onload = function() {
-            editor = CodeMirror.fromTextArea(document.getElementById("codeEditor"), {
-                lineNumbers: true,
-                theme: "dracula",
-                mode: "htmlmixed",
-                autoCloseBrackets: true,
-                tabSize: 4,
-                indentUnit: 4
-            });
-
-            setLanguage('html');
-            document.getElementById('runBtn').addEventListener('click', runCode);
-            // Refresh CodeMirror layout on resize to adapt to new dimensions
-            window.addEventListener('resize', () => editor.refresh());
+        // Init
+        window.onload = () => {
+            editor.value = templates.html;
+            updateUIForLang('html');
+            // Run HTML immediately on load for nice UX
+            runCode();
         };
 
-        // --- Language Switching ---
-        function setLanguage(lang) {
+        function switchLang(lang) {
             currentLang = lang;
             
-            document.querySelectorAll('.lang-tab').forEach(btn => {
-                btn.className = "lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors text-gray-400 hover:bg-gray-700 hover:text-gray-200";
-            });
-            document.getElementById(`tab-${lang}`).className = "lang-tab px-4 py-2 rounded-t-md text-sm font-medium transition-colors bg-gray-700 text-blue-400 border-t-2 border-blue-500";
-
-            // Update Editor Mode
-            if (lang === 'html') {
-                editor.setOption("mode", "htmlmixed");
-                document.getElementById('htmlPreview').classList.remove('hidden');
-                document.getElementById('consoleOutput').classList.add('hidden');
-            } else if (lang === 'cpp') {
-                editor.setOption("mode", "text/x-c++src");
-                document.getElementById('htmlPreview').classList.add('hidden');
-                document.getElementById('consoleOutput').classList.remove('hidden');
-            } else if (lang === 'mysql') {
-                editor.setOption("mode", "text/x-mysql");
-                document.getElementById('htmlPreview').classList.add('hidden');
-                document.getElementById('consoleOutput').classList.remove('hidden');
-            }
-            
-            editor.setValue(defaults[lang]);
-            document.getElementById('consoleOutput').innerHTML = '<div class="text-gray-500 italic mb-2">// Output will appear here...</div>';
-            document.getElementById('outputTitle').innerHTML = `<i class="fas fa-${lang === 'mysql' ? 'database' : 'terminal'} mr-2"></i> Output`;
-        }
-
-        // --- Execution Logic ---
-        function runCode() {
-            const code = editor.getValue();
-            
-            if (currentLang === 'html') {
-                runHTML(code);
-            } else if (currentLang === 'cpp') {
-                runCPP(code);
-            } else if (currentLang === 'mysql') {
-                runSQL(code);
-            }
-        }
-
-        // Helper to open new page with responsive styles
-        function openInNewTab(content, title = "Output") {
-            const win = window.open();
-            if (win) {
-                win.document.write(`
-                    <html>
-                    <head>
-                        <title>${title}</title>
-                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <style>
-                            /* Mobile-friendly output styles */
-                            body { 
-                                background: #111; 
-                                color: #eee; 
-                                font-family: monospace; 
-                                padding: 1rem;
-                                margin: 0;
-                                min-height: 100vh;
-                                box-sizing: border-box;
-                                font-size: 16px;
-                            }
-                            .table-responsive {
-                                overflow-x: auto;
-                                max-width: 100%;
-                            }
-                            table { 
-                                border-collapse: collapse; 
-                                width: 100%;
-                                max-width: 100%; 
-                                margin-top: 20px; 
-                                font-size: 0.9em; 
-                            }
-                            th, td { 
-                                border: 1px solid #444; 
-                                padding: 8px; 
-                                text-align: left; 
-                                min-width: 80px;
-                            }
-                            th { background-color: #222; color: #4ade80; }
-                        </style>
-                    </head>
-                    <body>${content}</body>
-                    </html>
-                `);
-                win.document.close();
-            } else {
-                console.error("Popup blocked! Please allow popups for this site to view the output.");
-            }
-        }
-
-        function openCurrentOutputInNewTab() {
-            if (currentLang === 'html') {
-                const code = editor.getValue();
-                const win = window.open();
-                if(win) {
-                    win.document.write(code);
-                    win.document.close();
+            // Update Tabs
+            ['cpp', 'html', 'mysql'].forEach(l => {
+                const tab = document.getElementById(`tab-${l}`);
+                if (l === lang) {
+                    tab.classList.remove('border-transparent', 'text-slate-400', 'hover:bg-slate-700/50');
+                    tab.classList.add('border-blue-500', 'bg-slate-700/50', 'text-white', 'font-medium');
                 } else {
-                    console.error("Popup blocked! Please allow popups for this site to view the output.");
-                }
-            } else {
-                // Use the last stored successful C++/MySQL output
-                openInNewTab(lastSuccessOutput.content, lastSuccessOutput.title);
-            }
-        }
-
-        function runHTML(code) {
-            const frame = document.getElementById('htmlPreview');
-            // Store the full code for new tab opening
-            lastSuccessOutput = { content: code, title: 'HTML Output' }; 
-            frame.srcdoc = code;
-        }
-
-        function runCPP(code) {
-            const outputDiv = document.getElementById('consoleOutput');
-            outputDiv.innerHTML = ''; 
-
-            // 1. Check for Errors
-            let errors = [];
-            if (!code.includes('main')) {
-                errors.push("Error: 'main' function not found.");
-            }
-            if (code.includes('#include <') && !code.includes('>')) {
-                errors.push("Error: Preprocessor directive malformed.");
-            }
-
-            // 2. If Errors, Show in Console
-            if (errors.length > 0) {
-                outputDiv.innerHTML = `<div class="text-red-500 font-bold mb-2">Compilation Failed:</div>`;
-                errors.forEach(err => {
-                    outputDiv.innerHTML += `<div class="text-red-400">${err}</div>`;
-                });
-                return;
-            }
-
-            // 3. If Success, Generate Output and Show In-Page
-            let outputHtml = `<div style="color: #fbbf24; margin-bottom: 10px;">Compiling GNU C++... Done.</div>`;
-            outputHtml += `<div style="color: #9ca3af; margin-bottom: 20px;">./a.out</div>`;
-            
-            let simOutput = "";
-            const lines = code.split('\n');
-            lines.forEach(line => {
-                if(line.includes('cout')) {
-                    const parts = line.split('<<');
-                    for(let i=1; i<parts.length; i++) {
-                        let content = parts[i].trim();
-                        if(content.endsWith(';')) content = content.slice(0, -1);
-                        
-                        if(content.startsWith('"') && content.includes('"')) {
-                             let text = content.match(/"([^"]*)"/);
-                             if(text && text[1]) simOutput += `<span>${text[1]}</span>`;
-                        } else if (content === 'endl') {
-                            simOutput += '<br>';
-                        }
-                    }
+                    tab.classList.add('border-transparent', 'text-slate-400', 'hover:bg-slate-700/50');
+                    tab.classList.remove('border-blue-500', 'bg-slate-700/50', 'text-white', 'font-medium');
                 }
             });
 
-            if(!simOutput) simOutput = `<span style="color: #6b7280;">(Program executed with no output detected)</span>`;
+            // Update Editor Content & UI
+            editor.value = templates[lang];
+            updateUIForLang(lang);
             
-            const finalContent = `<div style="color: #4ade80; font-size: 1.1em;">${simOutput}</div>`;
-            outputHtml += finalContent;
-            outputHtml += `<br><div style="color: #6b7280; margin-top: 20px;">Process returned 0 (0x0)</div>`;
-
-            // Display in-page
-            outputDiv.innerHTML = outputHtml;
-            
-            // Store HTML version for New Tab button
-            lastSuccessOutput = { 
-                content: `<h1 style="color: #4ade80;">C++ Program Output</h1>${outputHtml}`,
-                title: 'C++ Output'
-            };
+            // Clear Output
+            if(lang !== 'html') {
+                consoleOutput.innerHTML = '<span class="text-slate-500">// Output will appear here...</span>';
+            }
         }
 
-        function runSQL(code) {
-            const outputDiv = document.getElementById('consoleOutput');
-            outputDiv.innerHTML = '';
-            
-            const upperCode = code.toUpperCase();
-            
-            // 1. Check Errors (Basic simulation check)
-            if (!code.trim()) {
-                 outputDiv.innerHTML = `<div class="text-red-500">Error: No SQL query provided.</div>`;
-                 return;
-            }
-
-            // 2. If Success, Generate Output and Show In-Page
-            let outputHtml = '';
-            let content;
-
-            if (!upperCode.includes('SELECT')) {
-                content = `<div style="color: #60a5fa;">Query Executed Successfully.</div>
-                           <div style="color: #9ca3af;">No result set returned (e.g. INSERT/UPDATE/CREATE).</div>`;
+        function updateUIForLang(lang) {
+            if (lang === 'html') {
+                fileExt.textContent = '.html';
+                htmlContainer.classList.remove('hidden');
+                consoleContainer.classList.add('hidden');
+            } else if (lang === 'cpp') {
+                fileExt.textContent = '.cpp';
+                htmlContainer.classList.add('hidden');
+                consoleContainer.classList.remove('hidden');
             } else {
-                // Table output wrapped in a responsive container
-                content = `
-                <div style="color: #60a5fa; margin-bottom: 10px;">Query OK, 2 rows affected (0.02 sec)</div>
-                <div class="table-responsive">
-                    <table style="color: #eee;">
-                        <thead>
-                            <tr><th>ID</th><th>Name</th><th>Role</th></tr>
-                        </thead>
-                        <tbody>
-                            <tr><td>1</td><td>Alice</td><td>Admin</td></tr>
-                            <tr><td>2</td><td>Bob</td><td>Developer</td></tr>
-                        </tbody>
-                    </table>
-                </div>`;
+                fileExt.textContent = '.sql';
+                htmlContainer.classList.add('hidden');
+                consoleContainer.classList.remove('hidden');
             }
+        }
+
+        function runCode() {
+            const code = editor.value;
+            statusText.innerHTML = '<span class="loader"></span> Running...';
             
-            outputDiv.innerHTML = content;
-            
-            // Store HTML version for New Tab button
-            lastSuccessOutput = { 
-                content: `<h1 style="color: #60a5fa;">MySQL Query Results</h1>${content}`, 
-                title: 'MySQL Output'
-            };
+            setTimeout(() => {
+                statusText.innerText = "Ready";
+                
+                if (currentLang === 'html') {
+                    // Real HTML Execution
+                    const doc = iframe.contentWindow.document;
+                    doc.open();
+                    doc.write(code);
+                    doc.close();
+                } 
+                else if (currentLang === 'cpp') {
+                    // Simulated C++ Execution
+                    simulateCpp(code);
+                } 
+                else if (currentLang === 'mysql') {
+                    // Simulated MySQL Execution
+                    simulateSql(code);
+                }
+            }, 600); // Fake delay for realism
         }
 
         function clearOutput() {
-             if (currentLang === 'html') {
-                document.getElementById('htmlPreview').srcdoc = '';
+            if (currentLang === 'html') {
+                const doc = iframe.contentWindow.document;
+                doc.open();
+                doc.write('');
+                doc.close();
             } else {
-                document.getElementById('consoleOutput').innerHTML = '<div class="text-gray-500 italic mb-2">// Output will appear here...</div>';
+                consoleOutput.innerHTML = '<span class="text-slate-500">// Output cleared</span>';
             }
         }
+
+        // --- Simulation Logic ---
+
+        function simulateCpp(code) {
+            let output = "";
+            const lines = code.split('\n');
+            let hasMain = code.includes('int main');
+            
+            if (!hasMain) {
+                output = `<span class="text-red-400">Error: 'main' function not found.</span>`;
+            } else {
+                // Extremely basic parsing to find cout strings
+                output += `<div class="text-green-400 mb-2">Build finished successfully.</div>`;
+                
+                // Regex to find content inside cout << "..."
+                const regex = /cout\s*<<\s*"([^"]*)"/g;
+                let match;
+                let foundOutput = false;
+                
+                while ((match = regex.exec(code)) !== null) {
+                    output += `<div>${match[1]}</div>`;
+                    foundOutput = true;
+                }
+
+                if (!foundOutput && code.includes('cout')) {
+                    // Fallback if complex variables are used
+                    output += `<div>(Program executed. Console output simulation is limited to static strings in this demo)</div>`;
+                } else if (!foundOutput) {
+                    output += `<div class="text-slate-500 text-xs mt-2">Program exited with code 0</div>`;
+                }
+            }
+            
+            consoleOutput.innerHTML = output;
+        }
+
+        function simulateSql(code) {
+            let output = "";
+            const upperCode = code.toUpperCase();
+            
+            if (upperCode.includes('SELECT') && upperCode.includes('FROM USERS')) {
+                // Mock Table for Users
+                output = `
+                <div class="text-green-400 mb-2">Query executed successfully. (1 row affected)</div>
+                <table class="w-full text-left border-collapse mt-2">
+                    <thead>
+                        <tr class="border-b border-slate-700 text-slate-400">
+                            <th class="p-2">ID</th>
+                            <th class="p-2">Name</th>
+                            <th class="p-2">Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="border-b border-slate-800 font-mono text-slate-300">
+                            <td class="p-2">1</td>
+                            <td class="p-2">Paarthibhan</td>
+                            <td class="p-2">Admin</td>
+                        </tr>
+                        <tr class="border-b border-slate-800 font-mono text-slate-300">
+                            <td class="p-2">2</td>
+                            <td class="p-2">User_Guest</td>
+                            <td class="p-2">Visitor</td>
+                        </tr>
+                    </tbody>
+                </table>`;
+            } else if (upperCode.includes('CREATE TABLE')) {
+                output = `<div class="text-green-400">Command(s) completed successfully.</div>`;
+            } else if (upperCode.includes('INSERT INTO')) {
+                output = `<div class="text-green-400">Query OK, 1 row affected.</div>`;
+            } else if (upperCode.trim() === '') {
+                 output = `<div class="text-yellow-400">No query selected.</div>`;
+            } else {
+                output = `<div class="text-red-400">Error 1064 (42000): You have an error in your SQL syntax; this is a client-side demo simulator.</div>`;
+            }
+
+            consoleOutput.innerHTML = output;
+        }
+
+        // Support Tab key in textarea
+        editor.addEventListener('keydown', function(e) {
+            if (e.key == 'Tab') {
+                e.preventDefault();
+                var start = this.selectionStart;
+                var end = this.selectionEnd;
+
+                // set textarea value to: text before caret + tab + text after caret
+                this.value = this.value.substring(0, start) +
+                    "\t" + this.value.substring(end);
+
+                // put caret at right position again
+                this.selectionStart = this.selectionEnd = start + 1;
+            }
+        });
+
     </script>
 </body>
 </html>
